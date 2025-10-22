@@ -1131,7 +1131,9 @@ class HCTTracker {
                     .replace(/\d{8,}/g, '')  // 移除8位以上數字
                     .trim();
 
-                const nameMatch = nameAfterLabel.match(/([一-龥]{2,5})/);
+                // 移除空格後檢查
+                const noSpaceName = nameAfterLabel.replace(/\s+/g, '');
+                const nameMatch = noSpaceName.match(/([一-龥]{2,5})/);
                 if (nameMatch) {
                     result.name = nameMatch[1];
                     console.log('找到姓名（方法1）:', result.name);
@@ -1156,8 +1158,10 @@ class HCTTracker {
                             .replace(/姓名|收件人|地址|件數|電話|手機/g, '')
                             .trim();
 
-                        if (cleanLine.length >= 2 && cleanLine.length <= 5) {
-                            const nameMatch = cleanLine.match(/^([一-龥]{2,5})$/);
+                        // 移除空格後檢查
+                        const noSpaceLine = cleanLine.replace(/\s+/g, '');
+                        if (noSpaceLine.length >= 2 && noSpaceLine.length <= 5) {
+                            const nameMatch = noSpaceLine.match(/^([一-龥]{2,5})$/);
                             if (nameMatch) {
                                 result.name = nameMatch[1];
                                 console.log('找到姓名（方法2）:', result.name);
@@ -1174,7 +1178,9 @@ class HCTTracker {
         if (!result.name) {
             const excludeKeywords = ['姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註'];
             for (const line of lines) {
-                const nameMatch = line.match(/^([一-龥]{2,5})$/);
+                // 移除空格後檢查
+                const noSpaceLine = line.replace(/\s+/g, '');
+                const nameMatch = noSpaceLine.match(/^([一-龥]{2,5})$/);
                 if (nameMatch && !excludeKeywords.includes(nameMatch[1])) {
                     result.name = nameMatch[1];
                     console.log('找到姓名（方法3）:', result.name);
@@ -1197,13 +1203,15 @@ class HCTTracker {
 
                 // 在貨號後面的5行內找純中文名字
                 if (foundTrackingLine && i < lines.length) {
+                    // 清理：移除數字和特殊符號，但保留空格
                     const cleanLine = line.replace(/[\d\|\-_#@]/g, '').trim();
 
-                    // 純中文，長度2-5
-                    if (/^[一-龥]{2,5}$/.test(cleanLine)) {
+                    // 移除所有空格後檢查是否為純中文（2-5字）
+                    const noSpaceLine = cleanLine.replace(/\s+/g, '');
+                    if (/^[一-龥]{2,5}$/.test(noSpaceLine)) {
                         const excludeKeywords = ['姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註'];
-                        if (!excludeKeywords.includes(cleanLine)) {
-                            result.name = cleanLine;
+                        if (!excludeKeywords.includes(noSpaceLine)) {
+                            result.name = noSpaceLine;  // 使用去除空格後的名字
                             console.log('找到姓名（方法4-表格）:', result.name);
                             break;
                         }
@@ -1218,8 +1226,10 @@ class HCTTracker {
             for (const line of lines) {
                 // 不要包含數字或特殊符號的行
                 if (!/[\d\|\-_#@]/.test(line)) {
-                    const nameMatch = line.match(/([一-龥]{2,5})/);
-                    if (nameMatch && !excludeKeywords.some(kw => line.includes(kw))) {
+                    // 移除空格後檢查
+                    const noSpaceLine = line.replace(/\s+/g, '');
+                    const nameMatch = noSpaceLine.match(/([一-龥]{2,5})/);
+                    if (nameMatch && !excludeKeywords.some(kw => noSpaceLine.includes(kw))) {
                         result.name = nameMatch[1];
                         console.log('找到姓名（方法5）:', result.name);
                         break;
