@@ -1085,7 +1085,12 @@ class HCTTracker {
 
         // 清理文字
         const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-        console.log('清理後的行:', lines);
+        console.log('========== OCR 解析開始 ==========');
+        console.log('原始文字行數:', lines.length);
+        console.log('清理後的行:');
+        lines.forEach((line, index) => {
+            console.log(`  [${index}] ${line}`);
+        });
         console.log('========== 開始姓名提取邏輯 ==========');
 
         // 提取貨號（10位數字，排除電話號碼）
