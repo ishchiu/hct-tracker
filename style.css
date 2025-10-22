@@ -197,6 +197,66 @@ input[type="text"]:focus {
     color: var(--text-primary);
 }
 
+/* 貨件資訊區塊 */
+.tracking-meta {
+    display: grid;
+    grid-template-columns: 1fr 2fr 0.5fr auto;
+    gap: 8px;
+    align-items: center;
+    padding: 12px;
+    background-color: #f5f5f5;
+    border-radius: 6px;
+    margin-bottom: 12px;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.meta-item label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.meta-item input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.meta-item input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.btn-upload {
+    padding: 6px 12px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-upload:hover {
+    background-color: #7a9a8f;
+    transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+    .tracking-meta {
+        grid-template-columns: 1fr;
+    }
+}
+
 .status-badge {
     padding: 4px 12px;
     border-radius: 12px;

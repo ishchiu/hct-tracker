@@ -46,6 +46,9 @@ class HCTTracker {
         // 新增項目
         const newItem = {
             trackingNumber,
+            name: '',  // 收件人姓名
+            address: '',  // 收件地址
+            quantity: 1,  // 件數
             addedAt: new Date().toISOString(),
             statusHistory: [],  // 改為儲存完整歷程
             isDelivered: false
@@ -174,6 +177,44 @@ class HCTTracker {
 
         div.dataset.trackingNumber = item.trackingNumber;
         div.querySelector('.tracking-number').textContent = item.trackingNumber;
+
+        // 填入貨件資訊
+        const nameInput = div.querySelector('.meta-name');
+        const addressInput = div.querySelector('.meta-address');
+        const quantityInput = div.querySelector('.meta-quantity');
+
+        nameInput.value = item.name || '';
+        addressInput.value = item.address || '';
+        quantityInput.value = item.quantity || 1;
+
+        // 監聽輸入變化並儲存
+        nameInput.addEventListener('change', (e) => {
+            item.name = e.target.value;
+            this.saveToStorage();
+        });
+        addressInput.addEventListener('change', (e) => {
+            item.address = e.target.value;
+            this.saveToStorage();
+        });
+        quantityInput.addEventListener('change', (e) => {
+            item.quantity = parseInt(e.target.value) || 1;
+            this.saveToStorage();
+        });
+
+        // 綁定圖片上傳功能
+        const uploadBtn = div.querySelector('.btn-upload');
+        const fileInput = div.querySelector('.image-upload');
+
+        uploadBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                await this.processImageOCR(file, item, nameInput, addressInput, quantityInput);
+            }
+        });
 
         // 狀態徽章
         const badge = div.querySelector('.status-badge');
@@ -876,6 +917,129 @@ class HCTTracker {
                 `已有 ${deliveredCount} 個包裹送達`
             );
         }
+    }
+
+    // OCR 圖片處理
+    async processImageOCR(file, item, nameInput, addressInput, quantityInput) {
+        try {
+            // 顯示載入中
+            const loadingMsg = document.createElement('div');
+            loadingMsg.textContent = '🔄 正在識別圖片...';
+            loadingMsg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; z-index: 10000;';
+            document.body.appendChild(loadingMsg);
+
+            // 使用 Tesseract.js 進行 OCR
+            if (!window.Tesseract) {
+                // 如果 Tesseract 未載入，動態載入
+                await this.loadTesseract();
+            }
+
+            const { data: { text } } = await Tesseract.recognize(file, 'chi_tra', {
+                logger: m => console.log(m)
+            });
+
+            console.log('OCR 結果:', text);
+
+            // 解析文字
+            const parsed = this.parseOCRText(text);
+
+            // 填入欄位
+            if (parsed.name) {
+                nameInput.value = parsed.name;
+                item.name = parsed.name;
+            }
+            if (parsed.address) {
+                addressInput.value = parsed.address;
+                item.address = parsed.address;
+            }
+            if (parsed.quantity) {
+                quantityInput.value = parsed.quantity;
+                item.quantity = parsed.quantity;
+            }
+
+            this.saveToStorage();
+
+            // 移除載入訊息
+            document.body.removeChild(loadingMsg);
+
+            alert(`✅ 識別完成！\n\n姓名：${parsed.name || '未識別'}\n地址：${parsed.address || '未識別'}\n件數：${parsed.quantity || '未識別'}`);
+
+        } catch (error) {
+            console.error('OCR 錯誤:', error);
+            alert('❌ 圖片識別失敗：' + error.message);
+        }
+    }
+
+    // 動態載入 Tesseract.js
+    async loadTesseract() {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+
+    // 解析 OCR 文字
+    parseOCRText(text) {
+        const result = {
+            name: '',
+            address: '',
+            quantity: 1
+        };
+
+        // 清理文字
+        const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        console.log('清理後的行:', lines);
+
+        // 提取姓名（通常在第二個數字後面）
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+
+            // 尋找姓名（中文字符，2-4個字）
+            const nameMatch = line.match(/([一-龥]{2,4})/);
+            if (nameMatch && !result.name) {
+                result.name = nameMatch[1];
+                console.log('找到姓名:', result.name);
+            }
+
+            // 尋找地址（包含市、區、路、街、號等）
+            if (line.includes('市') || line.includes('區') || line.includes('路') || line.includes('街') || line.includes('號')) {
+                result.address = line;
+                console.log('找到地址:', result.address);
+            }
+
+            // 尋找件數（數字）
+            const quantityMatch = line.match(/^\s*(\d+)\s*$/);
+            if (quantityMatch && !result.quantity) {
+                result.quantity = parseInt(quantityMatch[1]);
+                console.log('找到件數:', result.quantity);
+            }
+        }
+
+        // 如果地址太短，嘗試合併多行
+        if (result.address && result.address.length < 10 && lines.length > 2) {
+            // 找到包含關鍵字的行，並合併相鄰行
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].includes('市') || lines[i].includes('區')) {
+                    const addressParts = [];
+                    // 向後查找最多3行
+                    for (let j = i; j < Math.min(i + 3, lines.length); j++) {
+                        if (lines[j].match(/[市區路街巷弄號樓]/)) {
+                            addressParts.push(lines[j]);
+                        }
+                    }
+                    if (addressParts.length > 0) {
+                        result.address = addressParts.join('');
+                        console.log('合併地址:', result.address);
+                    }
+                    break;
+                }
+            }
+        }
+
+        return result;
     }
 }
 
