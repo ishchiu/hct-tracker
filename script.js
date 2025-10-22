@@ -1405,10 +1405,11 @@ class HCTTracker {
             }
         }
         if (longestAddress) {
-            // 清理地址中的「地址」標籤和特殊符號
+            // 清理地址中的「地址」標籤、特殊符號和多餘空格
             result.address = longestAddress
                 .replace(/地址[:：\s]*/g, '')
                 .replace(/[|_#]/g, '')  // 移除 |、_、# 等符號
+                .replace(/\s+/g, '')    // 移除所有空格（OCR常把地址識別成帶空格）
                 .trim();
             console.log('找到地址:', result.address);
         }
