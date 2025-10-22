@@ -103,15 +103,29 @@ export default async function handler(req, res) {
   console.log('[查詢] 貨號:', trackingNumber);
 
   try {
-    // 使用新版網址（不需加密）
-    const url = `https://www.hct.com.tw/Search/SearchGoods.aspx?txtNo=${trackingNumber}`;
+    // 方法 1：嘗試 POST 請求（模擬表單提交）
+    const url = 'https://www.hct.com.tw/Search/SearchGoods.aspx';
     console.log('[請求] URL:', url);
+    console.log('[請求] Method: POST');
+    console.log('[請求] 貨號:', trackingNumber);
+
+    const formData = new URLSearchParams();
+    formData.append('txtNo', trackingNumber);
 
     const response = await fetch(url, {
+      method: 'POST',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        'Accept': 'text/html'
-      }
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Referer': 'https://www.hct.com.tw/Search/SearchGoods.aspx',
+        'Origin': 'https://www.hct.com.tw',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Cache-Control': 'max-age=0'
+      },
+      body: formData.toString()
     });
 
     if (!response.ok) {
