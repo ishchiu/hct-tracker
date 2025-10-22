@@ -1079,28 +1079,66 @@ class HCTTracker {
             }
         }
 
-        // 提取姓名（中文字符，2-4個字）
+        // 方法1：尋找「姓名」標籤後面的文字
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
 
-            // 尋找姓名
-            const nameMatch = line.match(/([一-龥]{2,4})/);
-            if (nameMatch && !result.name) {
-                result.name = nameMatch[1];
-                console.log('找到姓名:', result.name);
+            // 尋找姓名：找到「姓名」標籤後提取後面的中文
+            if (line.includes('姓名') && !result.name) {
+                // 移除「姓名」標籤，提取剩餘的中文字符
+                const nameAfterLabel = line.replace(/姓名[:：\s]*/g, '');
+                const nameMatch = nameAfterLabel.match(/([一-龥]{2,4})/);
+                if (nameMatch) {
+                    result.name = nameMatch[1];
+                    console.log('找到姓名（方法1）:', result.name);
+                }
             }
+        }
 
-            // 尋找地址（包含市、區、路、街、號等）
+        // 方法2：如果方法1失敗，嘗試找下一行
+        if (!result.name) {
+            for (let i = 0; i < lines.length - 1; i++) {
+                if (lines[i].includes('姓名')) {
+                    const nextLine = lines[i + 1];
+                    const nameMatch = nextLine.match(/^([一-龥]{2,4})$/);
+                    if (nameMatch) {
+                        result.name = nameMatch[1];
+                        console.log('找到姓名（方法2）:', result.name);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 方法3：找到任何2-4個中文字（排除常見標籤）
+        if (!result.name) {
+            const excludeKeywords = ['姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機'];
+            for (const line of lines) {
+                const nameMatch = line.match(/^([一-龥]{2,4})$/);
+                if (nameMatch && !excludeKeywords.includes(nameMatch[1])) {
+                    result.name = nameMatch[1];
+                    console.log('找到姓名（方法3）:', result.name);
+                    break;
+                }
+            }
+        }
+
+        // 尋找地址（包含市、區、路、街、號等）
+        for (const line of lines) {
             if (line.includes('市') || line.includes('區') || line.includes('路') || line.includes('街') || line.includes('號')) {
                 result.address = line;
                 console.log('找到地址:', result.address);
+                break;
             }
+        }
 
-            // 尋找件數（單獨的數字）
+        // 尋找件數（單獨的數字）
+        for (const line of lines) {
             const quantityMatch = line.match(/^\s*(\d+)\s*$/);
             if (quantityMatch && parseInt(quantityMatch[1]) < 100) {
                 result.quantity = parseInt(quantityMatch[1]);
                 console.log('找到件數:', result.quantity);
+                break;
             }
         }
 
