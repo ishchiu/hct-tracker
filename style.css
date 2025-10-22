@@ -251,6 +251,24 @@ input[type="text"]:focus {
     transform: translateY(-1px);
 }
 
+.btn-upload-main {
+    padding: 10px 20px;
+    background-color: #6a8eae;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-upload-main:hover {
+    background-color: #5a7e9e;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
 @media (max-width: 768px) {
     .tracking-meta {
         grid-template-columns: 1fr;

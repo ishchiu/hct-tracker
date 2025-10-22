@@ -15,6 +15,17 @@ class HCTTracker {
         document.getElementById('enableNotification').addEventListener('click', () => this.requestNotificationPermission());
         document.getElementById('autoPolling').addEventListener('change', (e) => this.togglePolling(e.target.checked));
 
+        // 綁定主圖片上傳
+        document.getElementById('uploadImageBtn').addEventListener('click', () => {
+            document.getElementById('mainImageUpload').click();
+        });
+        document.getElementById('mainImageUpload').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                this.processMainImageUpload(file);
+            }
+        });
+
         // 顯示載入的資料數量（調試用）
         console.log('已載入追蹤項目：', this.trackingItems.length);
         console.log('追蹤資料：', this.trackingItems);
@@ -981,9 +992,72 @@ class HCTTracker {
         });
     }
 
+    // 主圖片上傳處理（從新增追蹤區域）
+    async processMainImageUpload(file) {
+        try {
+            // 顯示載入中
+            const loadingMsg = document.createElement('div');
+            loadingMsg.textContent = '🔄 正在識別圖片...';
+            loadingMsg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; z-index: 10000;';
+            document.body.appendChild(loadingMsg);
+
+            // 使用 Tesseract.js 進行 OCR
+            if (!window.Tesseract) {
+                await this.loadTesseract();
+            }
+
+            const { data: { text } } = await Tesseract.recognize(file, 'chi_tra', {
+                logger: m => console.log(m)
+            });
+
+            console.log('OCR 結果:', text);
+
+            // 解析文字（包含貨號）
+            const parsed = this.parseOCRText(text, true);
+
+            // 移除載入訊息
+            document.body.removeChild(loadingMsg);
+
+            // 驗證貨號
+            if (!parsed.trackingNumber || !/^\d{10}$/.test(parsed.trackingNumber)) {
+                alert(`❌ 無法識別貨號！\n\n請確認圖片清晰，或手動輸入貨號。\n\n識別到的內容：\n${text.substring(0, 200)}`);
+                return;
+            }
+
+            // 檢查是否已存在
+            if (this.trackingItems.find(item => item.trackingNumber === parsed.trackingNumber)) {
+                alert(`此貨號已在追蹤清單中：${parsed.trackingNumber}`);
+                return;
+            }
+
+            // 新增項目
+            const newItem = {
+                trackingNumber: parsed.trackingNumber,
+                name: parsed.name || '',
+                address: parsed.address || '',
+                quantity: parsed.quantity || 1,
+                addedAt: new Date().toISOString(),
+                statusHistory: [],
+                isDelivered: false
+            };
+
+            this.trackingItems.push(newItem);
+            this.saveToStorage();
+            this.renderAll();
+
+            // 顯示成功訊息
+            alert(`✅ 已成功新增追蹤！\n\n貨號：${parsed.trackingNumber}\n姓名：${parsed.name || '未識別'}\n地址：${parsed.address || '未識別'}\n件數：${parsed.quantity || 1}`);
+
+        } catch (error) {
+            console.error('圖片處理錯誤:', error);
+            alert('❌ 圖片識別失敗：' + error.message);
+        }
+    }
+
     // 解析 OCR 文字
-    parseOCRText(text) {
+    parseOCRText(text, includeTrackingNumber = false) {
         const result = {
+            trackingNumber: '',
             name: '',
             address: '',
             quantity: 1
@@ -993,11 +1067,23 @@ class HCTTracker {
         const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
         console.log('清理後的行:', lines);
 
-        // 提取姓名（通常在第二個數字後面）
+        // 提取貨號（10位數字）
+        if (includeTrackingNumber) {
+            for (const line of lines) {
+                const trackingMatch = line.match(/(\d{10})/);
+                if (trackingMatch && !result.trackingNumber) {
+                    result.trackingNumber = trackingMatch[1];
+                    console.log('找到貨號:', result.trackingNumber);
+                    break;
+                }
+            }
+        }
+
+        // 提取姓名（中文字符，2-4個字）
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
 
-            // 尋找姓名（中文字符，2-4個字）
+            // 尋找姓名
             const nameMatch = line.match(/([一-龥]{2,4})/);
             if (nameMatch && !result.name) {
                 result.name = nameMatch[1];
@@ -1010,9 +1096,9 @@ class HCTTracker {
                 console.log('找到地址:', result.address);
             }
 
-            // 尋找件數（數字）
+            // 尋找件數（單獨的數字）
             const quantityMatch = line.match(/^\s*(\d+)\s*$/);
-            if (quantityMatch && !result.quantity) {
+            if (quantityMatch && parseInt(quantityMatch[1]) < 100) {
                 result.quantity = parseInt(quantityMatch[1]);
                 console.log('找到件數:', result.quantity);
             }
