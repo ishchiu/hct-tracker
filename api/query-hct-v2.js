@@ -156,6 +156,9 @@ export default async function handler(req, res) {
       const hasTables = html.includes('<table');
       const hasDateTime = /\d{4}\/\d{1,2}\/\d{1,2}/.test(html);
 
+      // 提取包含「貨」或「單號」的片段
+      const cargoMatch = html.match(/[\s\S]{0,300}(貨|單號|查無|not found|錯誤)[\s\S]{0,300}/i);
+
       return res.status(200).json({
         success: false,
         trackingNumber,
@@ -166,7 +169,9 @@ export default async function handler(req, res) {
           hasGridItems,
           hasColOptime,
           hasTables,
-          hasDateTime
+          hasDateTime,
+          allDateTimes,
+          cargoSnippet: cargoMatch ? cargoMatch[0] : 'Not found'
         }
       });
     }
