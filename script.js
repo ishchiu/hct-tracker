@@ -1126,7 +1126,7 @@ class HCTTracker {
             if (line.includes('姓名') && !result.name) {
                 // 移除「姓名」標籤，提取剩餘的中文字符
                 const nameAfterLabel = line.replace(/姓名[:：\s]*/g, '');
-                const nameMatch = nameAfterLabel.match(/([一-龥]{2,4})/);
+                const nameMatch = nameAfterLabel.match(/([一-龥]{2,5})/);
                 if (nameMatch) {
                     result.name = nameMatch[1];
                     console.log('找到姓名（方法1）:', result.name);
@@ -1137,9 +1137,9 @@ class HCTTracker {
         // 方法2：如果方法1失敗，嘗試找下一行
         if (!result.name) {
             for (let i = 0; i < lines.length - 1; i++) {
-                if (lines[i].includes('姓名')) {
+                if (lines[i].includes('姓名') || lines[i].includes('收件人')) {
                     const nextLine = lines[i + 1];
-                    const nameMatch = nextLine.match(/^([一-龥]{2,4})$/);
+                    const nameMatch = nextLine.match(/^([一-龥]{2,5})$/);
                     if (nameMatch) {
                         result.name = nameMatch[1];
                         console.log('找到姓名（方法2）:', result.name);
@@ -1149,15 +1149,31 @@ class HCTTracker {
             }
         }
 
-        // 方法3：找到任何2-4個中文字（排除常見標籤）
+        // 方法3：找到任何2-5個中文字（排除常見標籤）
         if (!result.name) {
-            const excludeKeywords = ['姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機'];
+            const excludeKeywords = ['姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註'];
             for (const line of lines) {
-                const nameMatch = line.match(/^([一-龥]{2,4})$/);
+                const nameMatch = line.match(/^([一-龥]{2,5})$/);
                 if (nameMatch && !excludeKeywords.includes(nameMatch[1])) {
                     result.name = nameMatch[1];
                     console.log('找到姓名（方法3）:', result.name);
                     break;
+                }
+            }
+        }
+
+        // 方法4：在整行文字中找中文名字（最寬鬆）
+        if (!result.name) {
+            const excludeKeywords = ['姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註', '帥園', '楊格'];
+            for (const line of lines) {
+                // 不要包含數字或特殊符號的行
+                if (!/[\d\|\-_#@]/.test(line)) {
+                    const nameMatch = line.match(/([一-龥]{2,5})/);
+                    if (nameMatch && !excludeKeywords.some(kw => line.includes(kw))) {
+                        result.name = nameMatch[1];
+                        console.log('找到姓名（方法4）:', result.name);
+                        break;
+                    }
                 }
             }
         }
@@ -1176,8 +1192,11 @@ class HCTTracker {
             }
         }
         if (longestAddress) {
-            // 清理地址中的「地址」標籤
-            result.address = longestAddress.replace(/地址[:：\s]*/g, '');
+            // 清理地址中的「地址」標籤和特殊符號
+            result.address = longestAddress
+                .replace(/地址[:：\s]*/g, '')
+                .replace(/[|_#]/g, '')  // 移除 |、_、# 等符號
+                .trim();
             console.log('找到地址:', result.address);
         }
 
