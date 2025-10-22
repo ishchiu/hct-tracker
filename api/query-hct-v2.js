@@ -14,11 +14,9 @@ function parseNewHCTFormat(html) {
   try {
     console.log('[解析] HTML 長度:', html.length);
 
-    // 新版網站使用 grid-item 結構
+    // 方法 1：提取 grid-item 結構（新版網站）
     // 時間格式：<div class="grid-item col_optime">2025/10/22 12:37</div>
-
-    // 提取所有時間
-    const timeRegex = /<div[^>]*class="grid-item col_optime"[^>]*>([^<]+)<\/div>/g;
+    const timeRegex = /<div[^>]*class="[^"]*col_optime[^"]*"[^>]*>([^<]+)<\/div>/gi;
     const times = [];
     let match;
 
@@ -31,9 +29,22 @@ function parseNewHCTFormat(html) {
 
     console.log('[提取] 找到時間:', times);
 
-    // 提取狀態關鍵字
-    const statusKeywords = html.match(/(?:順利送達|配送中|已集貨|轉運中|到著|配達)/g) || [];
+    // 方法 2：提取所有狀態關鍵字（包含更多變體）
+    const statusKeywords = html.match(/(?:順利送達|已送達|配送中|配達|已集貨|集貨|轉運中|轉運|到著|簽收)/gi) || [];
     console.log('[提取] 找到狀態關鍵字:', statusKeywords);
+
+    // 方法 3：如果 grid-item 方法失敗，嘗試表格解析
+    if (times.length === 0) {
+      console.log('[備用] 嘗試表格解析...');
+
+      // 提取表格中的時間
+      const tableTimeRegex = /<td[^>]*>(\d{4}\/\d{1,2}\/\d{1,2}\s+\d{1,2}:\d{2}(?::\d{2})?)<\/td>/gi;
+      while ((match = tableTimeRegex.exec(html)) !== null) {
+        times.push(match[1].trim());
+      }
+
+      console.log('[備用] 找到時間:', times);
+    }
 
     // 配對時間和狀態
     const minLength = Math.min(times.length, statusKeywords.length);
@@ -45,9 +56,10 @@ function parseNewHCTFormat(html) {
       });
     }
 
-    // 如果狀態數量少於時間，用位置推測
-    if (times.length > statusKeywords.length) {
-      for (let i = statusKeywords.length; i < times.length; i++) {
+    // 如果只有時間沒有狀態，用位置推測
+    if (times.length > 0 && statusKeywords.length === 0) {
+      console.log('[推測] 根據時間數量推測狀態...');
+      for (let i = 0; i < times.length; i++) {
         const guessedStatus = i === 0 ? '順利送達' : i === 1 ? '配送中' : '已集貨';
         statusList.push({
           time: times[i],
@@ -112,13 +124,23 @@ export default async function handler(req, res) {
     const statusList = parseNewHCTFormat(html);
 
     if (statusList.length === 0) {
+      // 提取一些關鍵資訊用於 debug
+      const hasGridItems = html.includes('grid-item');
+      const hasColOptime = html.includes('col_optime');
+      const hasTables = html.includes('<table');
+      const hasDateTime = /\d{4}\/\d{1,2}\/\d{1,2}/.test(html);
+
       return res.status(200).json({
         success: false,
         trackingNumber,
         error: '未找到貨態記錄',
         debug: {
           htmlLength: html.length,
-          htmlPreview: html.substring(0, 2000)
+          htmlPreview: html.substring(0, 3000),
+          hasGridItems,
+          hasColOptime,
+          hasTables,
+          hasDateTime
         }
       });
     }
