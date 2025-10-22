@@ -14,20 +14,35 @@ function parseNewHCTFormat(html) {
   try {
     console.log('[解析] HTML 長度:', html.length);
 
-    // Debug: 搜尋關鍵字
+    // Debug: 搜尋關鍵字和結構
     const hasColOptime = html.includes('col_optime');
     const hasGridItem = html.includes('grid-item');
-    const hasDate = html.match(/2025\/\d{1,2}\/\d{1,2}/);
+    const hasGridContainer = html.includes('grid-container');
 
     console.log('[Debug] 包含 col_optime:', hasColOptime);
     console.log('[Debug] 包含 grid-item:', hasGridItem);
-    console.log('[Debug] 包含日期:', hasDate ? hasDate[0] : 'No');
+    console.log('[Debug] 包含 grid-container:', hasGridContainer);
 
-    // 如果有日期，找出日期附近的內容
-    if (hasDate) {
-      const dateIndex = html.indexOf(hasDate[0]);
-      const context = html.substring(Math.max(0, dateIndex - 200), Math.min(html.length, dateIndex + 200));
-      console.log('[Debug] 日期附近的 HTML:', context);
+    // 搜尋 grid-container 的內容
+    const gridMatch = html.match(/<div[^>]*class="[^"]*grid-container[^"]*"[^>]*>([\s\S]{0,1000})<\/div>/i);
+    if (gridMatch) {
+      console.log('[Debug] grid-container 內容:', gridMatch[1].substring(0, 500));
+    } else {
+      console.log('[Debug] 找不到 grid-container 完整內容');
+
+      // 嘗試找出 grid-container 開始標籤
+      const gridStartMatch = html.match(/<div[^>]*class="[^"]*grid-container[^"]*"[^>]*>/);
+      if (gridStartMatch) {
+        const startIndex = html.indexOf(gridStartMatch[0]);
+        const snippet = html.substring(startIndex, Math.min(html.length, startIndex + 800));
+        console.log('[Debug] grid-container 開始處:', snippet);
+      }
+    }
+
+    // 搜尋是否有 JavaScript 變數或 API 呼叫
+    const hasJsonData = html.match(/var\s+\w+\s*=\s*(\{[\s\S]*?\}|\[[\s\S]*?\])/);
+    if (hasJsonData) {
+      console.log('[Debug] 找到 JavaScript 資料:', hasJsonData[0].substring(0, 200));
     }
 
     // 方法 1：提取 grid-item 結構（新版網站）
