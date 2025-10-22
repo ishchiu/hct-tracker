@@ -1096,11 +1096,34 @@ class HCTTracker {
         // 找出「寄件人」所在的行索引，作為搜索邊界
         let senderLineIndex = lines.length;  // 預設為最後一行
         for (let i = 0; i < lines.length; i++) {
-            if (lines[i].includes('寄件人') || lines[i].includes('寄貨人')) {
+            if (lines[i].includes('寄件人') || lines[i].includes('寄貨人') || lines[i].includes('寄')) {
                 senderLineIndex = i;
                 console.log('[邊界] 找到「寄件人」在第', i, '行，只搜索之前的內容');
                 break;
             }
+        }
+
+        // 過濾函數：排除右側欄位的內容
+        function isRightColumnContent(line) {
+            const rightColumnKeywords = [
+                '件', '長', '寬', '高', 'S60', 'S70', 'S80',  // 尺寸
+                '代收', '指配', '到著', '箱配',  // 物流術語
+                /^\d+$/,  // 純數字行（如「1」）
+                /^\d{1,2}\/\d{1,2}$/  // 日期格式（如「10/22」）
+            ];
+
+            for (const keyword of rightColumnKeywords) {
+                if (keyword instanceof RegExp) {
+                    if (keyword.test(line.trim())) {
+                        console.log('[過濾] 排除右欄內容:', line);
+                        return true;
+                    }
+                } else if (line.includes(keyword)) {
+                    console.log('[過濾] 排除右欄內容:', line);
+                    return true;
+                }
+            }
+            return false;
         }
 
         // 提取貨號（10位數字，排除電話號碼）
@@ -1260,6 +1283,12 @@ class HCTTracker {
             ];
             for (let i = 0; i < senderLineIndex; i++) {
                 const line = lines[i];
+
+                // 跳過右側欄位內容
+                if (isRightColumnContent(line)) {
+                    continue;
+                }
+
                 // 移除空格後檢查
                 const noSpaceLine = line.replace(/\s+/g, '');
                 const nameMatch = noSpaceLine.match(/^([一-龥]{2,4})$/);
@@ -1291,6 +1320,12 @@ class HCTTracker {
                 for (let i = trackingLineIndex + 1; i <= searchEnd; i++) {
                     const line = lines[i];
                     console.log(`[方法4] 檢查第 ${i} 行:`, line);
+
+                    // 跳過右側欄位內容
+                    if (isRightColumnContent(line)) {
+                        console.log('[方法4] ⏭️  跳過右側欄位');
+                        continue;
+                    }
 
                     // 清理：移除數字和特殊符號，保留中文
                     const cleanLine = line
@@ -1336,6 +1371,12 @@ class HCTTracker {
             ];
             for (let i = 0; i < senderLineIndex; i++) {
                 const line = lines[i];
+
+                // 跳過右側欄位內容
+                if (isRightColumnContent(line)) {
+                    continue;
+                }
+
                 // 不要包含數字或特殊符號的行
                 if (!/[\d\|\-_#@]/.test(line)) {
                     // 移除空格後檢查
