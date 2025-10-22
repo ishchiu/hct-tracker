@@ -165,14 +165,10 @@ export default async function handler(req, res) {
   console.log(`[查詢] 貨號: ${trackingNumber}`);
 
   try {
-    // 1. 加密貨號
-    const encryptedNo = desEncrypt(trackingNumber);
+    // 使用新竹物流新版查詢網址（不需要加密！）
+    const apiUrl = `https://www.hct.com.tw/Search/SearchGoods.aspx?txtNo=${trackingNumber}`;
 
-    // 2. 組建 API URL
-    const v = '314FABD52C024B800AE5F0D2B1AC4FF1';
-    const apiUrl = `https://hctapiweb.hct.com.tw/phone/searchGoods_Main.aspx?no=${encodeURIComponent(encryptedNo)}&v=${v}`;
-
-    console.log(`[API] URL: ${apiUrl}`);
+    console.log(`[API] 使用新版網址: ${apiUrl}`);
 
     // 3. 呼叫新竹物流 API
     const response = await fetch(apiUrl, {
