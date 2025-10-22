@@ -99,11 +99,11 @@ export default async function handler(req, res) {
   console.log('[查詢] 貨號:', trackingNumber);
 
   try {
-    // 使用舊版 URL（會自動重定向到新版網站並帶有資料）
-    const targetUrl = `http://cagweb01.hct.com.tw/pls/hctweb/C_PIKAM020AS?pACT=C_POKAM31&pINVOICE_NO=${trackingNumber}`;
+    // 直接使用最終的貨態頁面 URL（跳過中間重定向）
+    const targetUrl = `https://www.hct.com.tw/cagweb/C_PIKAM020AS_NEW.aspx?pACT=C_POKAM31&pINVOICE_NO=${trackingNumber}`;
 
     console.log('[請求] 完整 URL:', targetUrl);
-    console.log('[請求] Method: GET (自動跟隨重定向)');
+    console.log('[請求] Method: GET');
     console.log('[請求] 貨號:', trackingNumber);
     console.log('[環境] Vercel Region:', process.env.VERCEL_REGION || 'local');
 
