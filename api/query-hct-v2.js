@@ -99,48 +99,54 @@ export default async function handler(req, res) {
   console.log('[查詢] 貨號:', trackingNumber);
 
   try {
-    // 直接使用最終的貨態頁面 URL（跳過中間重定向）
-    const targetUrl = `https://www.hct.com.tw/cagweb/C_PIKAM020AS_NEW.aspx?pACT=C_POKAM31&pINVOICE_NO=${trackingNumber}`;
+    // 步驟 1：POST 到 dataEncry.aspx 進行初始請求
+    const initialUrl = 'http://cagweb01.hct.com.tw/pls/hctweb/C_PIKAM020AS';
+    const params = new URLSearchParams({
+      pACT: 'C_POKAM31',
+      pINVOICE_NO: trackingNumber
+    });
 
-    console.log('[請求] 完整 URL:', targetUrl);
-    console.log('[請求] Method: GET');
-    console.log('[請求] 貨號:', trackingNumber);
+    console.log('[步驟1] 初始請求:', initialUrl);
+    console.log('[步驟1] 參數:', params.toString());
     console.log('[環境] Vercel Region:', process.env.VERCEL_REGION || 'local');
 
-    const response = await fetch(targetUrl, {
+    const response = await fetch(`${initialUrl}?${params.toString()}`, {
       method: 'GET',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
         'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8',
         'Accept-Encoding': 'gzip, deflate, br',
-        'DNT': '1',
         'Connection': 'keep-alive',
         'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
         'Cache-Control': 'max-age=0'
       },
       redirect: 'follow'
     });
 
-    console.log('[回應] Status:', response.status);
-    console.log('[回應] StatusText:', response.statusText);
-    console.log('[回應] Final URL:', response.url);
-    console.log('[回應] Redirected:', response.redirected);
+    console.log('[步驟1回應] Status:', response.status);
+    console.log('[步驟1回應] StatusText:', response.statusText);
+    console.log('[步驟1回應] Final URL:', response.url);
+    console.log('[步驟1回應] Redirected:', response.redirected);
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
     const html = await response.text();
-    console.log('[回應] 內容長度:', html.length);
+    console.log('[步驟1回應] 內容長度:', html.length);
 
     // 提取 title 用於 debug
     const titleMatch = html.match(/<title>(.*?)<\/title>/i);
     const pageTitle = titleMatch ? titleMatch[1] : 'No title found';
-    console.log('[回應] 頁面標題:', pageTitle);
+    console.log('[步驟1回應] 頁面標題:', pageTitle);
+
+    // 檢查最終 URL 是否包含 SearchGoods
+    if (response.url.includes('SearchGoods')) {
+      console.log('[成功] 已跳轉到貨態頁面');
+    } else {
+      console.log('[警告] 可能未正確跳轉，Final URL:', response.url);
+    }
 
     // 檢查是否是我們自己的網站
     if (html.includes('新竹物流貨態查詢通知') || html.includes('script.js')) {
