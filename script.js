@@ -1124,8 +1124,13 @@ class HCTTracker {
 
             // 尋找姓名：找到「姓名」標籤後提取後面的中文
             if (line.includes('姓名') && !result.name) {
-                // 移除「姓名」標籤，提取剩餘的中文字符
-                const nameAfterLabel = line.replace(/姓名[:：\s]*/g, '');
+                // 移除「姓名」標籤和電話號碼，提取剩餘的中文字符
+                let nameAfterLabel = line
+                    .replace(/姓名[:：\s]*/g, '')
+                    .replace(/\d{10}/g, '')  // 移除10位數字（電話）
+                    .replace(/\d{8,}/g, '')  // 移除8位以上數字
+                    .trim();
+
                 const nameMatch = nameAfterLabel.match(/([一-龥]{2,5})/);
                 if (nameMatch) {
                     result.name = nameMatch[1];
@@ -1134,17 +1139,33 @@ class HCTTracker {
             }
         }
 
-        // 方法2：如果方法1失敗，嘗試找下一行
+        // 方法2：在包含「姓名」或「收件人」的上下文中找
         if (!result.name) {
-            for (let i = 0; i < lines.length - 1; i++) {
-                if (lines[i].includes('姓名') || lines[i].includes('收件人')) {
-                    const nextLine = lines[i + 1];
-                    const nameMatch = nextLine.match(/^([一-龥]{2,5})$/);
-                    if (nameMatch) {
-                        result.name = nameMatch[1];
-                        console.log('找到姓名（方法2）:', result.name);
-                        break;
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+
+                // 如果這行包含「姓名」或「收件人」
+                if (line.includes('姓名') || line.includes('收件人')) {
+                    // 檢查當前行、下一行、下兩行
+                    for (let j = i; j <= Math.min(i + 2, lines.length - 1); j++) {
+                        const checkLine = lines[j];
+
+                        // 移除所有數字和特殊符號後找中文
+                        const cleanLine = checkLine
+                            .replace(/[\d\|\-_#@]/g, '')
+                            .replace(/姓名|收件人|地址|件數|電話|手機/g, '')
+                            .trim();
+
+                        if (cleanLine.length >= 2 && cleanLine.length <= 5) {
+                            const nameMatch = cleanLine.match(/^([一-龥]{2,5})$/);
+                            if (nameMatch) {
+                                result.name = nameMatch[1];
+                                console.log('找到姓名（方法2）:', result.name);
+                                break;
+                            }
+                        }
                     }
+                    if (result.name) break;
                 }
             }
         }
@@ -1162,16 +1183,45 @@ class HCTTracker {
             }
         }
 
-        // 方法4：在整行文字中找中文名字（最寬鬆）
+        // 方法4：針對表格格式 - 找紅框標註區域的名字（通常在地址前面）
+        if (!result.name && includeTrackingNumber) {
+            // 找到貨號後，往後找幾行看有沒有純中文的行
+            let foundTrackingLine = false;
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+
+                // 找到貨號所在行
+                if (line.includes(result.trackingNumber)) {
+                    foundTrackingLine = true;
+                }
+
+                // 在貨號後面的5行內找純中文名字
+                if (foundTrackingLine && i < lines.length) {
+                    const cleanLine = line.replace(/[\d\|\-_#@]/g, '').trim();
+
+                    // 純中文，長度2-5
+                    if (/^[一-龥]{2,5}$/.test(cleanLine)) {
+                        const excludeKeywords = ['姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註'];
+                        if (!excludeKeywords.includes(cleanLine)) {
+                            result.name = cleanLine;
+                            console.log('找到姓名（方法4-表格）:', result.name);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 方法5：在整行文字中找中文名字（最寬鬆）
         if (!result.name) {
-            const excludeKeywords = ['姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註', '帥園', '楊格'];
+            const excludeKeywords = ['姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註', '帥園', '楊格', '中和'];
             for (const line of lines) {
                 // 不要包含數字或特殊符號的行
                 if (!/[\d\|\-_#@]/.test(line)) {
                     const nameMatch = line.match(/([一-龥]{2,5})/);
                     if (nameMatch && !excludeKeywords.some(kw => line.includes(kw))) {
                         result.name = nameMatch[1];
-                        console.log('找到姓名（方法4）:', result.name);
+                        console.log('找到姓名（方法5）:', result.name);
                         break;
                     }
                 }
