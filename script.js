@@ -1093,6 +1093,16 @@ class HCTTracker {
         });
         console.log('========== 開始姓名提取邏輯 ==========');
 
+        // 找出「寄件人」所在的行索引，作為搜索邊界
+        let senderLineIndex = lines.length;  // 預設為最後一行
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].includes('寄件人') || lines[i].includes('寄貨人')) {
+                senderLineIndex = i;
+                console.log('[邊界] 找到「寄件人」在第', i, '行，只搜索之前的內容');
+                break;
+            }
+        }
+
         // 提取貨號（10位數字，排除電話號碼）
         if (includeTrackingNumber) {
             for (const line of lines) {
@@ -1124,12 +1134,12 @@ class HCTTracker {
             }
         }
 
-        // 方法0：尋找「收件人」標籤旁邊的姓名
-        for (let i = 0; i < lines.length; i++) {
+        // 方法0：尋找「收件人」標籤旁邊的姓名（僅在寄件人之前搜索）
+        for (let i = 0; i < senderLineIndex; i++) {
             const line = lines[i];
 
             // 優先找「收件人」完整標籤（避免誤抓「收」字開頭的其他詞）
-            if ((line.includes('收件人') || line.includes('收貨人')) && !result.name) {
+            if ((line.includes('收件人') || line.includes('收貨人') || line.includes('收')) && !result.name) {
                 console.log('[方法0] 找到「收件人/收貨人」，該行:', line);
 
                 // 提取該行的中文字符（排除標籤字和標點符號）
@@ -1160,12 +1170,12 @@ class HCTTracker {
             }
         }
 
-        // 方法0.5：如果上面沒找到，檢查「收件人」的下一行
+        // 方法0.5：如果上面沒找到，檢查「收件人」的下一行（僅在寄件人之前）
         if (!result.name) {
-            for (let i = 0; i < lines.length - 1; i++) {
+            for (let i = 0; i < Math.min(senderLineIndex - 1, lines.length - 1); i++) {
                 const line = lines[i];
 
-                if (line.includes('收件人') || line.includes('收貨人')) {
+                if (line.includes('收件人') || line.includes('收貨人') || line.includes('收')) {
                     console.log('[方法0.5] 檢查「收件人」下一行:', lines[i + 1]);
 
                     const nextLine = lines[i + 1];
@@ -1185,9 +1195,9 @@ class HCTTracker {
             }
         }
 
-        // 方法1：尋找「姓名」標籤後面的文字
+        // 方法1：尋找「姓名」標籤後面的文字（僅在寄件人之前）
         if (!result.name) {
-            for (let i = 0; i < lines.length; i++) {
+            for (let i = 0; i < senderLineIndex; i++) {
                 const line = lines[i];
 
                 // 尋找姓名：找到「姓名」標籤後提取後面的中文
@@ -1213,15 +1223,15 @@ class HCTTracker {
             }
         }
 
-        // 方法2：在包含「姓名」或「收件人」的上下文中找
+        // 方法2：在包含「姓名」或「收件人」的上下文中找（僅在寄件人之前）
         if (!result.name) {
-            for (let i = 0; i < lines.length; i++) {
+            for (let i = 0; i < senderLineIndex; i++) {
                 const line = lines[i];
 
                 // 如果這行包含「姓名」或「收件人」
-                if (line.includes('姓名') || line.includes('收件人')) {
-                    // 檢查當前行、下一行、下兩行
-                    for (let j = i; j <= Math.min(i + 2, lines.length - 1); j++) {
+                if (line.includes('姓名') || line.includes('收件人') || line.includes('收')) {
+                    // 檢查當前行、下一行、下兩行（但不超過寄件人邊界）
+                    for (let j = i; j <= Math.min(i + 2, senderLineIndex - 1, lines.length - 1); j++) {
                         const checkLine = lines[j];
 
                         // 移除所有數字和特殊符號後找中文
@@ -1246,13 +1256,14 @@ class HCTTracker {
             }
         }
 
-        // 方法3：找到任何2-4個中文字（排除常見標籤）
+        // 方法3：找到任何2-4個中文字（排除常見標籤，僅在寄件人之前）
         if (!result.name) {
             const excludeKeywords = [
                 '姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註',
                 '公司', '有限', '股份', '企業', '商行', '工作室'
             ];
-            for (const line of lines) {
+            for (let i = 0; i < senderLineIndex; i++) {
+                const line = lines[i];
                 // 移除空格後檢查
                 const noSpaceLine = line.replace(/\s+/g, '');
                 const nameMatch = noSpaceLine.match(/^([一-龥]{2,4})$/);
@@ -1278,9 +1289,10 @@ class HCTTracker {
                 }
             }
 
-            // 在貨號後面的 2-6 行內找純中文名字（跳過第一行，因為可能是貨號本身）
+            // 在貨號後面的 2-6 行內找純中文名字（但不超過寄件人邊界）
             if (trackingLineIndex >= 0) {
-                for (let i = trackingLineIndex + 1; i <= Math.min(trackingLineIndex + 6, lines.length - 1); i++) {
+                const searchEnd = Math.min(trackingLineIndex + 6, senderLineIndex - 1, lines.length - 1);
+                for (let i = trackingLineIndex + 1; i <= searchEnd; i++) {
                     const line = lines[i];
                     console.log(`[方法4] 檢查第 ${i} 行:`, line);
 
@@ -1316,14 +1328,15 @@ class HCTTracker {
             }
         }
 
-        // 方法5：在整行文字中找中文名字（最寬鬆）
+        // 方法5：在整行文字中找中文名字（最寬鬆，僅在寄件人之前）
         if (!result.name) {
             const excludeKeywords = [
                 '姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註',
                 '帥園', '楊格', '中和', '淡水', '新市', '管理',
                 '公司', '有限', '股份', '企業', '商行', '工作室'
             ];
-            for (const line of lines) {
+            for (let i = 0; i < senderLineIndex; i++) {
+                const line = lines[i];
                 // 不要包含數字或特殊符號的行
                 if (!/[\d\|\-_#@]/.test(line)) {
                     // 移除空格後檢查
