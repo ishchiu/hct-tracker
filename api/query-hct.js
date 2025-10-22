@@ -195,14 +195,15 @@ export default async function handler(req, res) {
     const statusList = parseHCTResponse(html);
 
     if (statusList.length === 0) {
-      // 回傳原始 HTML 的前 500 字元供 debug
+      // 回傳原始 HTML 的前 1500 字元供 debug
       return res.status(200).json({
         success: false,
         trackingNumber,
         error: '未找到貨態記錄',
         debug: {
-          htmlPreview: html.substring(0, 500),
-          htmlLength: html.length
+          htmlPreview: html.substring(0, 1500),
+          htmlLength: html.length,
+          encryptedNo: encryptedNo
         }
       });
     }
