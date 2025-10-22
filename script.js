@@ -1067,14 +1067,33 @@ class HCTTracker {
         const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
         console.log('清理後的行:', lines);
 
-        // 提取貨號（10位數字）
+        // 提取貨號（10位數字，排除電話號碼）
         if (includeTrackingNumber) {
             for (const line of lines) {
-                const trackingMatch = line.match(/(\d{10})/);
-                if (trackingMatch && !result.trackingNumber) {
-                    result.trackingNumber = trackingMatch[1];
-                    console.log('找到貨號:', result.trackingNumber);
-                    break;
+                // 找所有10位數字
+                const trackingMatches = line.match(/\d{10}/g);
+                if (trackingMatches) {
+                    for (const match of trackingMatches) {
+                        // 排除以 09 或 02 開頭的（可能是電話）
+                        if (!match.startsWith('09') && !match.startsWith('02')) {
+                            result.trackingNumber = match;
+                            console.log('找到貨號:', result.trackingNumber);
+                            break;
+                        }
+                    }
+                    if (result.trackingNumber) break;
+                }
+            }
+
+            // 如果還沒找到，可能貨號就是 09 開頭（也接受）
+            if (!result.trackingNumber) {
+                for (const line of lines) {
+                    const trackingMatch = line.match(/(\d{10})/);
+                    if (trackingMatch) {
+                        result.trackingNumber = trackingMatch[1];
+                        console.log('找到貨號（備用）:', result.trackingNumber);
+                        break;
+                    }
                 }
             }
         }
@@ -1123,22 +1142,60 @@ class HCTTracker {
             }
         }
 
-        // 尋找地址（包含市、區、路、街、號等）
+        // 尋找地址（包含市、區、路、街、號、巷、弄等）
+        // 優先找最長的地址行
+        let longestAddress = '';
         for (const line of lines) {
-            if (line.includes('市') || line.includes('區') || line.includes('路') || line.includes('街') || line.includes('號')) {
-                result.address = line;
-                console.log('找到地址:', result.address);
-                break;
+            if (line.includes('市') || line.includes('區') || line.includes('路') || line.includes('街') || line.includes('號') || line.includes('巷') || line.includes('弄')) {
+                // 排除「地址」標籤本身
+                if (!line.match(/^地址[:：\s]*$/)) {
+                    if (line.length > longestAddress.length) {
+                        longestAddress = line;
+                    }
+                }
+            }
+        }
+        if (longestAddress) {
+            // 清理地址中的「地址」標籤
+            result.address = longestAddress.replace(/地址[:：\s]*/g, '');
+            console.log('找到地址:', result.address);
+        }
+
+        // 尋找件數
+        // 方法1：找「件數」標籤後面的數字
+        for (const line of lines) {
+            if (line.includes('件數')) {
+                const qtyMatch = line.match(/件數[:：\s]*(\d+)/);
+                if (qtyMatch) {
+                    result.quantity = parseInt(qtyMatch[1]);
+                    console.log('找到件數（方法1）:', result.quantity);
+                    break;
+                }
             }
         }
 
-        // 尋找件數（單獨的數字）
-        for (const line of lines) {
-            const quantityMatch = line.match(/^\s*(\d+)\s*$/);
-            if (quantityMatch && parseInt(quantityMatch[1]) < 100) {
-                result.quantity = parseInt(quantityMatch[1]);
-                console.log('找到件數:', result.quantity);
-                break;
+        // 方法2：找「件」字旁邊的數字
+        if (!result.quantity || result.quantity === 1) {
+            for (const line of lines) {
+                // 匹配 "1 件" 或 "1件" 格式
+                const qtyMatch = line.match(/(\d+)\s*件/);
+                if (qtyMatch && parseInt(qtyMatch[1]) < 100) {
+                    result.quantity = parseInt(qtyMatch[1]);
+                    console.log('找到件數（方法2）:', result.quantity);
+                    break;
+                }
+            }
+        }
+
+        // 方法3：找單獨的小數字（備用）
+        if (!result.quantity || result.quantity === 1) {
+            for (const line of lines) {
+                const quantityMatch = line.match(/^\s*(\d+)\s*$/);
+                if (quantityMatch && parseInt(quantityMatch[1]) > 0 && parseInt(quantityMatch[1]) < 20) {
+                    result.quantity = parseInt(quantityMatch[1]);
+                    console.log('找到件數（方法3）:', result.quantity);
+                    break;
+                }
             }
         }
 
