@@ -1119,27 +1119,63 @@ class HCTTracker {
             }
         }
 
-        // 方法0：尋找「收」字旁邊的姓名（表格常見格式：收貨人）
+        // 方法0：尋找「收件人」標籤旁邊的姓名
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
 
-            // 如果這行包含「收」字（收貨人）
-            if ((line.includes('收') || line.includes('貨人')) && !result.name) {
-                console.log('[方法0] 找到「收」字，該行:', line);
+            // 優先找「收件人」完整標籤（避免誤抓「收」字開頭的其他詞）
+            if ((line.includes('收件人') || line.includes('收貨人')) && !result.name) {
+                console.log('[方法0] 找到「收件人/收貨人」，該行:', line);
 
-                // 提取該行的中文字符（排除「收」「貨」「人」等標籤字）
+                // 提取該行的中文字符（排除標籤字和標點符號）
                 const cleanLine = line
                     .replace(/\d+/g, '')  // 移除數字
-                    .replace(/[\|\-_#@$%()（）]/g, '')  // 移除特殊符號
-                    .replace(/收|貨|人|姓|名|寄|件/g, '')  // 移除標籤字
+                    .replace(/[\|\-_#@$%()（）:：、]/g, '')  // 移除特殊符號和標點
+                    .replace(/收件人|收貨人|姓名|寄件人|電話|手機/g, '')  // 移除標籤詞
                     .replace(/\s+/g, '')  // 移除空格
                     .trim();
 
-                const nameMatch = cleanLine.match(/([一-龥]{2,4})/);
+                console.log('[方法0] 清理後:', cleanLine);
+
+                // 匹配 2-4 個中文字（台灣姓名通常 2-4 字）
+                const nameMatch = cleanLine.match(/^([一-龥]{2,4})$/);
                 if (nameMatch) {
                     result.name = nameMatch[1];
-                    console.log('[方法0] ✅ 找到姓名（收貨人旁）:', result.name);
+                    console.log('[方法0] ✅ 找到姓名（收件人旁）:', result.name);
                     break;
+                } else {
+                    // 如果整行不符合，嘗試找第一個符合的片段
+                    const partialMatch = cleanLine.match(/([一-龥]{2,4})/);
+                    if (partialMatch) {
+                        result.name = partialMatch[1];
+                        console.log('[方法0] ✅ 找到姓名（部分匹配）:', result.name);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 方法0.5：如果上面沒找到，檢查「收件人」的下一行
+        if (!result.name) {
+            for (let i = 0; i < lines.length - 1; i++) {
+                const line = lines[i];
+
+                if (line.includes('收件人') || line.includes('收貨人')) {
+                    console.log('[方法0.5] 檢查「收件人」下一行:', lines[i + 1]);
+
+                    const nextLine = lines[i + 1];
+                    const cleanLine = nextLine
+                        .replace(/\d+/g, '')
+                        .replace(/[\|\-_#@$%()（）:：、]/g, '')
+                        .replace(/\s+/g, '')
+                        .trim();
+
+                    const nameMatch = cleanLine.match(/^([一-龥]{2,4})$/);
+                    if (nameMatch) {
+                        result.name = nameMatch[1];
+                        console.log('[方法0.5] ✅ 找到姓名（下一行）:', result.name);
+                        break;
+                    }
                 }
             }
         }
@@ -1205,16 +1241,19 @@ class HCTTracker {
             }
         }
 
-        // 方法3：找到任何2-5個中文字（排除常見標籤）
+        // 方法3：找到任何2-4個中文字（排除常見標籤）
         if (!result.name) {
-            const excludeKeywords = ['姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註'];
+            const excludeKeywords = [
+                '姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註',
+                '公司', '有限', '股份', '企業', '商行', '工作室'
+            ];
             for (const line of lines) {
                 // 移除空格後檢查
                 const noSpaceLine = line.replace(/\s+/g, '');
-                const nameMatch = noSpaceLine.match(/^([一-龥]{2,5})$/);
-                if (nameMatch && !excludeKeywords.includes(nameMatch[1])) {
+                const nameMatch = noSpaceLine.match(/^([一-龥]{2,4})$/);
+                if (nameMatch && !excludeKeywords.some(kw => nameMatch[1].includes(kw))) {
                     result.name = nameMatch[1];
-                    console.log('找到姓名（方法3）:', result.name);
+                    console.log('[方法3] ✅ 找到姓名:', result.name);
                     break;
                 }
             }
@@ -1251,7 +1290,11 @@ class HCTTracker {
 
                     // 檢查是否為純中文（2-4字，名字通常不超過4字）
                     if (/^[一-龥]{2,4}$/.test(cleanLine)) {
-                        const excludeKeywords = ['姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註', '新北市', '台北市', '高雄市', '台中市', '中和區', '員山路'];
+                        const excludeKeywords = [
+                            '姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註',
+                            '新北市', '台北市', '高雄市', '台中市', '中和區', '員山路', '淡水區',
+                            '公司', '有限', '股份', '企業', '商行', '工作室'  // 排除公司名稱
+                        ];
 
                         // 排除包含關鍵字的內容
                         const isExcluded = excludeKeywords.some(kw => cleanLine.includes(kw));
@@ -1270,16 +1313,20 @@ class HCTTracker {
 
         // 方法5：在整行文字中找中文名字（最寬鬆）
         if (!result.name) {
-            const excludeKeywords = ['姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註', '帥園', '楊格', '中和'];
+            const excludeKeywords = [
+                '姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註',
+                '帥園', '楊格', '中和', '淡水', '新市', '管理',
+                '公司', '有限', '股份', '企業', '商行', '工作室'
+            ];
             for (const line of lines) {
                 // 不要包含數字或特殊符號的行
                 if (!/[\d\|\-_#@]/.test(line)) {
                     // 移除空格後檢查
                     const noSpaceLine = line.replace(/\s+/g, '');
-                    const nameMatch = noSpaceLine.match(/([一-龥]{2,5})/);
+                    const nameMatch = noSpaceLine.match(/([一-龥]{2,4})/);
                     if (nameMatch && !excludeKeywords.some(kw => noSpaceLine.includes(kw))) {
                         result.name = nameMatch[1];
-                        console.log('找到姓名（方法5）:', result.name);
+                        console.log('[方法5] ✅ 找到姓名:', result.name);
                         break;
                     }
                 }
