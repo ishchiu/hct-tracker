@@ -1,0 +1,444 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* 莫蘭迪色系 */
+    --primary-color: #8B9D9B;      /* 莫蘭迪綠灰 */
+    --secondary-color: #A8B5B2;     /* 莫蘭迪淺綠 */
+    --accent-color: #C4AFA4;        /* 莫蘭迪玫瑰褐 */
+    --danger-color: #B88B84;        /* 莫蘭迪暗紅 */
+    --warning-color: #D4B5A0;       /* 莫蘭迪奶茶色 */
+    --bg-color: #F5F3F0;            /* 莫蘭迪米白 */
+    --card-bg: #FDFDFB;
+    --text-primary: #5A5A5A;
+    --text-secondary: #8B8B8B;
+    --border-color: #E6E3DD;
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+    background: linear-gradient(135deg, #C9C5BA 0%, #A8B5B2 50%, #D4B5A0 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: var(--text-primary);
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+header {
+    background: var(--card-bg);
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+h1 {
+    font-size: 2rem;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.input-section,
+.notification-section,
+.tracking-list,
+.polling-control {
+    background: var(--card-bg);
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+}
+
+.input-section label {
+    display: block;
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.input-group {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+input[type="text"] {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #6B8482;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-secondary {
+    background: var(--secondary-color);
+    color: white;
+    width: 100%;
+}
+
+.btn-secondary:hover {
+    background: #8FA19E;
+}
+
+.btn-secondary:disabled {
+    background: var(--text-secondary);
+    cursor: not-allowed;
+}
+
+.hint,
+.hint-small {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-top: 8px;
+}
+
+.hint-small {
+    font-size: 0.8rem;
+}
+
+.status-text {
+    color: var(--secondary-color);
+    font-weight: 600;
+    text-align: center;
+    margin-top: 12px;
+}
+
+/* 追蹤清單 */
+.tracking-list h2 {
+    font-size: 1.25rem;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+}
+
+#trackingItems {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#trackingItems:empty::after {
+    content: '尚無追蹤項目';
+    display: block;
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary);
+}
+
+.tracking-item {
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s;
+}
+
+.tracking-item:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow);
+}
+
+.tracking-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.tracking-number {
+    font-size: 1.1rem;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    color: var(--text-primary);
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.status-badge.pending {
+    background: #E8DFD6;
+    color: #8B7355;
+}
+
+.status-badge.delivered {
+    background: #D4E3DB;
+    color: #5A7A65;
+}
+
+.status-badge.in-transit {
+    background: #DAE2E6;
+    color: #6B7F8E;
+}
+
+.tracking-body {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+.tracking-info {
+    flex: 1;
+}
+
+.tracking-info > p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.tracking-info span {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* 貨態時間軸 */
+.status-timeline {
+    margin-top: 12px;
+}
+
+.status-timeline h4 {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.timeline-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.timeline-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 8px;
+    background: var(--bg-color);
+    border-radius: 6px;
+    border-left: 3px solid var(--border-color);
+    transition: all 0.2s;
+}
+
+.timeline-item:hover {
+    background: var(--border-color);
+}
+
+.timeline-item.delivered {
+    border-left-color: var(--secondary-color);
+    background: #D4E3DB;
+}
+
+.timeline-item.in-transit {
+    border-left-color: var(--primary-color);
+}
+
+.timeline-icon {
+    font-size: 1.2rem;
+    min-width: 24px;
+    text-align: center;
+}
+
+.timeline-content {
+    flex: 1;
+}
+
+.timeline-status {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.timeline-time {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.timeline-items:empty::after {
+    content: '尚無貨態記錄，點擊「➕」新增';
+    display: block;
+    text-align: center;
+    padding: 16px;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.tracking-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-icon {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: var(--bg-color);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow);
+}
+
+.auto-fetch-btn:hover {
+    background: #D4E3DB;
+}
+
+.query-btn:hover {
+    background: #DAE2E6;
+}
+
+.update-btn:hover {
+    background: #E8DFD6;
+}
+
+.delete-btn:hover {
+    background: #E8D5D1;
+}
+
+.auto-fetch-btn.loading {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* 輪詢控制 */
+.polling-control label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.polling-control input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.polling-control select {
+    padding: 4px 8px;
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+footer {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    text-align: center;
+    margin-top: 24px;
+}
+
+footer a {
+    color: var(--accent-color);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+footer a:hover {
+    text-decoration: underline;
+    color: var(--primary-color);
+}
+
+.disclaimer {
+    margin-top: 12px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* 響應式設計 */
+@media (max-width: 640px) {
+    body {
+        padding: 12px;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    .input-group {
+        flex-direction: column;
+    }
+
+    .tracking-body {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .tracking-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+/* 模板隱藏 */
+template {
+    display: none;
+}

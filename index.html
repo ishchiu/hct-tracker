@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新竹物流貨態查詢通知</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📦 新竹物流貨態查詢通知</h1>
+            <p class="subtitle">輸入單號，自動監控配送狀態，送達時立即通知</p>
+        </header>
+
+        <main>
+            <div class="input-section">
+                <label for="trackingNumber">請輸入 10 碼貨號：</label>
+                <div class="input-group">
+                    <input
+                        type="text"
+                        id="trackingNumber"
+                        placeholder="例如：1234567890"
+                        maxlength="10"
+                        pattern="[0-9]{10}"
+                    >
+                    <button id="addBtn" class="btn btn-primary">➕ 新增追蹤</button>
+                </div>
+                <p class="hint">新增後，點擊列表中的「🔍」按鈕即可查詢貨態</p>
+            </div>
+
+            <div class="notification-section">
+                <button id="enableNotification" class="btn btn-secondary">🔔 啟用桌面通知</button>
+                <p id="notificationStatus" class="status-text"></p>
+            </div>
+
+            <div class="tracking-list" id="trackingList">
+                <h2>追蹤清單</h2>
+                <div id="trackingItems">
+                    <!-- 追蹤項目將動態插入這裡 -->
+                </div>
+            </div>
+
+            <div class="polling-control">
+                <label>
+                    <input type="checkbox" id="autoPolling">
+                    自動輪詢（每
+                    <select id="pollingInterval">
+                        <option value="300000">5 分鐘</option>
+                        <option value="600000" selected>10 分鐘</option>
+                        <option value="1800000">30 分鐘</option>
+                        <option value="3600000">1 小時</option>
+                    </select>
+                    自動查詢）
+                </label>
+                <p class="hint-small">✨ 系統會定期自動查詢未送達的包裹，並在送達時立即通知您！</p>
+                <p class="hint-small" style="margin-top: 4px;">⚠️ 注意：自動查詢可能因網路或代理問題失敗，建議搭配手動查詢</p>
+            </div>
+        </main>
+
+        <footer>
+            <p>
+                <a href="http://cagweb01.hct.com.tw/pls/hctweb/C_PIKAM020AS?pACT=C_POKAM31" target="_blank">
+                    前往新竹物流官方查詢頁面 🔗
+                </a>
+            </p>
+            <p class="disclaimer">本工具僅供個人使用，資料儲存於瀏覽器本地</p>
+        </footer>
+    </div>
+
+    <!-- 追蹤項目範本 -->
+    <template id="trackingItemTemplate">
+        <div class="tracking-item" data-tracking-number="">
+            <div class="tracking-header">
+                <span class="tracking-number"></span>
+                <span class="status-badge"></span>
+            </div>
+            <div class="tracking-body">
+                <div class="tracking-info">
+                    <p class="last-update">最後更新：<span class="update-time">--</span></p>
+                    <div class="status-timeline">
+                        <h4>貨態歷程</h4>
+                        <div class="timeline-items">
+                            <!-- 貨態記錄將插入這裡 -->
+                        </div>
+                    </div>
+                </div>
+                <div class="tracking-actions">
+                    <button class="btn-icon auto-fetch-btn" title="自動查詢">🤖</button>
+                    <button class="btn-icon query-btn" title="前往官網">🔍</button>
+                    <button class="btn-icon update-btn" title="手動新增">➕</button>
+                    <button class="btn-icon delete-btn" title="刪除">🗑️</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script src="script.js"></script>
+</body>
+</html>
