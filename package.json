@@ -15,6 +15,9 @@
   ],
   "author": "",
   "license": "MIT",
+  "dependencies": {
+    "crypto-js": "^4.2.0"
+  },
   "devDependencies": {
     "vercel": "^33.0.0"
   }

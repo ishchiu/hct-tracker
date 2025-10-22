@@ -5,11 +5,12 @@
  * 端點：/api/query-hct?trackingNumber=6714484884
  */
 
-const crypto = require('crypto');
+const CryptoJS = require('crypto-js');
 
 /**
  * DES CBC 加密函數
  * 根據新竹物流 API 文件規範
+ * 使用 crypto-js 避免 Node.js 18+ 的 OpenSSL 3.0 兼容性問題
  */
 function desEncrypt(text) {
   try {
@@ -26,23 +27,26 @@ function desEncrypt(text) {
     // 2. IV（初始化向量）：固定值
     const ivString = 'PEBQNLTU';
 
-    // 3. 創建 DES-CBC cipher
-    // 注意：DES 的 key 長度必須是 8 bytes
-    const key = Buffer.from(keyString.substring(0, 8), 'utf8');
-    const iv = Buffer.from(ivString, 'utf8');
+    // 3. 準備 Key 和 IV（使用 crypto-js 的格式）
+    const key = CryptoJS.enc.Utf8.parse(keyString.substring(0, 8));
+    const iv = CryptoJS.enc.Utf8.parse(ivString);
 
-    const cipher = crypto.createCipheriv('des-cbc', key, iv);
-    cipher.setAutoPadding(true); // PKCS7 padding
+    // 4. DES-CBC 加密
+    const encrypted = CryptoJS.DES.encrypt(text, key, {
+      iv: iv,
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7
+    });
 
-    // 4. 加密
-    let encrypted = cipher.update(text, 'utf8', 'base64');
-    encrypted += cipher.final('base64');
+    // 5. 轉換為 Base64
+    const encryptedBase64 = encrypted.toString();
 
-    console.log(`[加密] 原文: ${text}, Key: ${keyString.substring(0, 8)}, 密文: ${encrypted}`);
+    console.log(`[加密成功] 原文: ${text}, Key: ${keyString.substring(0, 8)}, 密文: ${encryptedBase64.substring(0, 20)}...`);
 
-    return encrypted;
+    return encryptedBase64;
   } catch (error) {
     console.error('[加密失敗]', error);
+    console.error('[錯誤詳情]', error.stack);
     throw new Error(`加密失敗: ${error.message}`);
   }
 }
