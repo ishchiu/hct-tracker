@@ -14,106 +14,53 @@ function parseNewHCTFormat(html) {
   try {
     console.log('[解析] HTML 長度:', html.length);
 
-    // Debug: 搜尋關鍵字和結構
-    const hasColOptime = html.includes('col_optime');
-    const hasGridItem = html.includes('grid-item');
-    const hasGridContainer = html.includes('grid-container');
+    // 方法 1：尋找所有日期時間（格式：2025/10/22 12:37）
+    const dateTimeRegex = /(\d{4}\/\d{1,2}\/\d{1,2}\s+\d{1,2}:\d{2})/g;
+    const allDateTimes = [];
+    let dateMatch;
 
-    console.log('[Debug] 包含 col_optime:', hasColOptime);
-    console.log('[Debug] 包含 grid-item:', hasGridItem);
-    console.log('[Debug] 包含 grid-container:', hasGridContainer);
-
-    // 搜尋 grid-container 的內容
-    const gridMatch = html.match(/<div[^>]*class="[^"]*grid-container[^"]*"[^>]*>([\s\S]{0,1000})<\/div>/i);
-    if (gridMatch) {
-      console.log('[Debug] grid-container 內容:', gridMatch[1].substring(0, 500));
-    } else {
-      console.log('[Debug] 找不到 grid-container 完整內容');
-
-      // 嘗試找出 grid-container 開始標籤
-      const gridStartMatch = html.match(/<div[^>]*class="[^"]*grid-container[^"]*"[^>]*>/);
-      if (gridStartMatch) {
-        const startIndex = html.indexOf(gridStartMatch[0]);
-        const snippet = html.substring(startIndex, Math.min(html.length, startIndex + 800));
-        console.log('[Debug] grid-container 開始處:', snippet);
+    while ((dateMatch = dateTimeRegex.exec(html)) !== null) {
+      const dateTime = dateMatch[1].trim();
+      // 排除「查貨時間」
+      const contextBefore = html.substring(Math.max(0, dateMatch.index - 30), dateMatch.index);
+      if (!contextBefore.includes('查貨時間')) {
+        allDateTimes.push(dateTime);
       }
     }
 
-    // 搜尋是否有 JavaScript 變數或 API 呼叫
-    const hasJsonData = html.match(/var\s+\w+\s*=\s*(\{[\s\S]*?\}|\[[\s\S]*?\])/);
-    if (hasJsonData) {
-      console.log('[Debug] 找到 JavaScript 資料:', hasJsonData[0].substring(0, 200));
-    }
+    console.log('[Debug] 找到日期時間（排除查貨時間）:', allDateTimes);
 
-    // 搜尋 AJAX 呼叫或 fetch 請求
-    const ajaxMatch = html.match(/(?:fetch|ajax|XMLHttpRequest|axios|jquery|getJSON)\s*\([^)]*["']([^"']+)["']/gi);
-    if (ajaxMatch) {
-      console.log('[Debug] 找到 AJAX 呼叫:', ajaxMatch);
-    }
+    // 方法 2：根據日期時間找出對應的狀態
+    // 在每個日期時間附近搜尋狀態關鍵字
+    for (const dateTime of allDateTimes) {
+      const dateIndex = html.indexOf(dateTime);
+      if (dateIndex === -1) continue;
 
-    // 搜尋 .aspx 或 .asmx 端點（ASP.NET Web Services）
-    const apiEndpoints = html.match(/["']([^"']*\.(?:aspx|asmx|ashx)[^"']*)["']/gi);
-    if (apiEndpoints) {
-      console.log('[Debug] 找到 API 端點:', apiEndpoints.slice(0, 10));
-    }
+      // 提取日期時間前後 300 字元的內容
+      const contextStart = Math.max(0, dateIndex - 150);
+      const contextEnd = Math.min(html.length, dateIndex + 300);
+      const context = html.substring(contextStart, contextEnd);
 
-    // 搜尋包含 "txtNo" 或貨號的 JavaScript 程式碼
-    const trackingCodeMatch = html.match(/txtNo[\s\S]{0,200}/);
-    if (trackingCodeMatch) {
-      console.log('[Debug] txtNo 相關程式碼:', trackingCodeMatch[0]);
-    }
+      console.log('[Debug] 時間', dateTime, '的上下文:', context.substring(0, 200));
 
-    // 方法 1：提取 grid-item 結構（新版網站）
-    // 時間格式：<div class="grid-item col_optime">2025/10/22 12:37</div>
-    const timeRegex = /<div[^>]*class="[^"]*col_optime[^"]*"[^>]*>([^<]+)<\/div>/gi;
-    const times = [];
-    let match;
+      // 在上下文中尋找狀態關鍵字
+      const statusMatch = context.match(/(?:順利送達|已送達|配送中|配達|已集貨|集貨|轉運中|轉運|到著|簽收)/i);
 
-    while ((match = timeRegex.exec(html)) !== null) {
-      const timeText = match[1].trim();
-      if (timeText.match(/\d{4}\/\d{1,2}\/\d{1,2}/)) {
-        times.push(timeText);
-      }
-    }
-
-    console.log('[提取] 找到時間:', times);
-
-    // 方法 2：提取所有狀態關鍵字（包含更多變體）
-    const statusKeywords = html.match(/(?:順利送達|已送達|配送中|配達|已集貨|集貨|轉運中|轉運|到著|簽收)/gi) || [];
-    console.log('[提取] 找到狀態關鍵字:', statusKeywords);
-
-    // 方法 3：如果 grid-item 方法失敗，嘗試表格解析
-    if (times.length === 0) {
-      console.log('[備用] 嘗試表格解析...');
-
-      // 提取表格中的時間
-      const tableTimeRegex = /<td[^>]*>(\d{4}\/\d{1,2}\/\d{1,2}\s+\d{1,2}:\d{2}(?::\d{2})?)<\/td>/gi;
-      while ((match = tableTimeRegex.exec(html)) !== null) {
-        times.push(match[1].trim());
-      }
-
-      console.log('[備用] 找到時間:', times);
-    }
-
-    // 配對時間和狀態
-    const minLength = Math.min(times.length, statusKeywords.length);
-
-    for (let i = 0; i < minLength; i++) {
-      statusList.push({
-        time: times[i],
-        status: statusKeywords[i]
-      });
-    }
-
-    // 如果只有時間沒有狀態，用位置推測
-    if (times.length > 0 && statusKeywords.length === 0) {
-      console.log('[推測] 根據時間數量推測狀態...');
-      for (let i = 0; i < times.length; i++) {
-        const guessedStatus = i === 0 ? '順利送達' : i === 1 ? '配送中' : '已集貨';
+      if (statusMatch) {
         statusList.push({
-          time: times[i],
-          status: guessedStatus
+          time: dateTime,
+          status: statusMatch[0]
         });
+        console.log('[配對] 找到:', dateTime, '->', statusMatch[0]);
+      } else {
+        // 如果找不到關鍵字，使用預設狀態
+        const defaultStatus = statusList.length === 0 ? '順利送達' :
+                              statusList.length === 1 ? '配送中' : '已集貨';
+        statusList.push({
+          time: dateTime,
+          status: defaultStatus
+        });
+        console.log('[配對] 使用預設:', dateTime, '->', defaultStatus);
       }
     }
 
@@ -152,11 +99,11 @@ export default async function handler(req, res) {
   console.log('[查詢] 貨號:', trackingNumber);
 
   try {
-    // 使用完整的絕對 URL（GET 請求）
-    const targetUrl = `https://www.hct.com.tw/Search/SearchGoods.aspx?txtNo=${trackingNumber}`;
+    // 使用舊版 URL（會自動重定向到新版網站並帶有資料）
+    const targetUrl = `http://cagweb01.hct.com.tw/pls/hctweb/C_PIKAM020AS?pACT=C_POKAM31&pINVOICE_NO=${trackingNumber}`;
 
     console.log('[請求] 完整 URL:', targetUrl);
-    console.log('[請求] Method: GET');
+    console.log('[請求] Method: GET (自動跟隨重定向)');
     console.log('[請求] 貨號:', trackingNumber);
     console.log('[環境] Vercel Region:', process.env.VERCEL_REGION || 'local');
 
