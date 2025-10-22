@@ -156,8 +156,16 @@ export default async function handler(req, res) {
       const hasTables = html.includes('<table');
       const hasDateTime = /\d{4}\/\d{1,2}\/\d{1,2}/.test(html);
 
+      // 提取所有日期時間用於 debug
+      const dateTimeRegex = /(\d{4}\/\d{1,2}\/\d{1,2}\s+\d{1,2}:\d{2})/g;
+      const allDates = [];
+      let m;
+      while ((m = dateTimeRegex.exec(html)) !== null) {
+        allDates.push(m[1]);
+      }
+
       // 提取包含「貨」或「單號」的片段
-      const cargoMatch = html.match(/[\s\S]{0,300}(貨|單號|查無|not found|錯誤)[\s\S]{0,300}/i);
+      const cargoMatch = html.match(/[\s\S]{0,300}(貨|單號|查無|not found|錯誤|操作說明)[\s\S]{0,300}/i);
 
       return res.status(200).json({
         success: false,
@@ -166,11 +174,12 @@ export default async function handler(req, res) {
         debug: {
           htmlLength: html.length,
           htmlPreview: html.substring(0, 3000),
+          pageTitle,
           hasGridItems,
           hasColOptime,
           hasTables,
           hasDateTime,
-          allDateTimes,
+          allDates,
           cargoSnippet: cargoMatch ? cargoMatch[0] : 'Not found'
         }
       });
