@@ -103,37 +103,53 @@ export default async function handler(req, res) {
   console.log('[查詢] 貨號:', trackingNumber);
 
   try {
-    // 方法 1：嘗試 POST 請求（模擬表單提交）
-    const url = 'https://www.hct.com.tw/Search/SearchGoods.aspx';
-    console.log('[請求] URL:', url);
-    console.log('[請求] Method: POST');
+    // 使用完整的絕對 URL（GET 請求）
+    const targetUrl = `https://www.hct.com.tw/Search/SearchGoods.aspx?txtNo=${trackingNumber}`;
+
+    console.log('[請求] 完整 URL:', targetUrl);
+    console.log('[請求] Method: GET');
     console.log('[請求] 貨號:', trackingNumber);
+    console.log('[環境] Vercel Region:', process.env.VERCEL_REGION || 'local');
 
-    const formData = new URLSearchParams();
-    formData.append('txtNo', trackingNumber);
-
-    const response = await fetch(url, {
-      method: 'POST',
+    const response = await fetch(targetUrl, {
+      method: 'GET',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Referer': 'https://www.hct.com.tw/Search/SearchGoods.aspx',
-        'Origin': 'https://www.hct.com.tw',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
         'Connection': 'keep-alive',
         'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
         'Cache-Control': 'max-age=0'
       },
-      body: formData.toString()
+      redirect: 'follow'
     });
 
+    console.log('[回應] Status:', response.status);
+    console.log('[回應] StatusText:', response.statusText);
+    console.log('[回應] Final URL:', response.url);
+    console.log('[回應] Redirected:', response.redirected);
+
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
     const html = await response.text();
-    console.log('[回應] 長度:', html.length);
+    console.log('[回應] 內容長度:', html.length);
+
+    // 提取 title 用於 debug
+    const titleMatch = html.match(/<title>(.*?)<\/title>/i);
+    const pageTitle = titleMatch ? titleMatch[1] : 'No title found';
+    console.log('[回應] 頁面標題:', pageTitle);
+
+    // 檢查是否是我們自己的網站
+    if (html.includes('新竹物流貨態查詢通知') || html.includes('script.js')) {
+      throw new Error('錯誤：fetch 請求返回了自己的網站內容，而不是新竹物流網站');
+    }
 
     const statusList = parseNewHCTFormat(html);
 
