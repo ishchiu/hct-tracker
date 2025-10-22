@@ -994,17 +994,26 @@ class HCTTracker {
 
     // 主圖片上傳處理（從新增追蹤區域）
     async processMainImageUpload(file) {
+        console.log('開始處理圖片:', file.name);
+        let loadingMsg = null;
+
         try {
             // 顯示載入中
-            const loadingMsg = document.createElement('div');
+            loadingMsg = document.createElement('div');
             loadingMsg.textContent = '🔄 正在識別圖片...';
-            loadingMsg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; z-index: 10000;';
+            loadingMsg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 8px; z-index: 10000; font-size: 16px;';
             document.body.appendChild(loadingMsg);
 
             // 使用 Tesseract.js 進行 OCR
+            console.log('檢查 Tesseract:', !!window.Tesseract);
             if (!window.Tesseract) {
+                loadingMsg.textContent = '🔄 正在載入 OCR 引擎...';
+                console.log('開始載入 Tesseract...');
                 await this.loadTesseract();
+                console.log('Tesseract 載入完成');
             }
+
+            loadingMsg.textContent = '🔄 正在識別圖片文字...';
 
             const { data: { text } } = await Tesseract.recognize(file, 'chi_tra', {
                 logger: m => console.log(m)
@@ -1016,7 +1025,11 @@ class HCTTracker {
             const parsed = this.parseOCRText(text, true);
 
             // 移除載入訊息
-            document.body.removeChild(loadingMsg);
+            if (loadingMsg && loadingMsg.parentNode) {
+                document.body.removeChild(loadingMsg);
+            }
+
+            console.log('解析結果:', parsed);
 
             // 驗證貨號
             if (!parsed.trackingNumber || !/^\d{10}$/.test(parsed.trackingNumber)) {
@@ -1050,7 +1063,14 @@ class HCTTracker {
 
         } catch (error) {
             console.error('圖片處理錯誤:', error);
-            alert('❌ 圖片識別失敗：' + error.message);
+            console.error('錯誤堆疊:', error.stack);
+
+            // 移除載入訊息
+            if (loadingMsg && loadingMsg.parentNode) {
+                document.body.removeChild(loadingMsg);
+            }
+
+            alert(`❌ 圖片識別失敗！\n\n錯誤訊息：${error.message}\n\n請檢查：\n1. 圖片格式是否正確（JPG/PNG）\n2. 圖片大小是否過大\n3. 瀏覽器 Console 中的詳細錯誤`);
         }
     }
 
