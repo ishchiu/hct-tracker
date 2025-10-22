@@ -45,6 +45,24 @@ function parseNewHCTFormat(html) {
       console.log('[Debug] 找到 JavaScript 資料:', hasJsonData[0].substring(0, 200));
     }
 
+    // 搜尋 AJAX 呼叫或 fetch 請求
+    const ajaxMatch = html.match(/(?:fetch|ajax|XMLHttpRequest|axios|jquery|getJSON)\s*\([^)]*["']([^"']+)["']/gi);
+    if (ajaxMatch) {
+      console.log('[Debug] 找到 AJAX 呼叫:', ajaxMatch);
+    }
+
+    // 搜尋 .aspx 或 .asmx 端點（ASP.NET Web Services）
+    const apiEndpoints = html.match(/["']([^"']*\.(?:aspx|asmx|ashx)[^"']*)["']/gi);
+    if (apiEndpoints) {
+      console.log('[Debug] 找到 API 端點:', apiEndpoints.slice(0, 10));
+    }
+
+    // 搜尋包含 "txtNo" 或貨號的 JavaScript 程式碼
+    const trackingCodeMatch = html.match(/txtNo[\s\S]{0,200}/);
+    if (trackingCodeMatch) {
+      console.log('[Debug] txtNo 相關程式碼:', trackingCodeMatch[0]);
+    }
+
     // 方法 1：提取 grid-item 結構（新版網站）
     // 時間格式：<div class="grid-item col_optime">2025/10/22 12:37</div>
     const timeRegex = /<div[^>]*class="[^"]*col_optime[^"]*"[^>]*>([^<]+)<\/div>/gi;
