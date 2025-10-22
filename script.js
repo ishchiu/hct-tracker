@@ -243,10 +243,10 @@ class HCTTracker {
         try {
             console.log(`🤖 開始自動查詢貨號：${trackingNumber}`);
 
-            // 呼叫 Vercel API
-            // 本地測試：http://localhost:3000/api/query-hct
-            // 部署後：https://your-project.vercel.app/api/query-hct
-            const apiUrl = `/api/query-hct?trackingNumber=${trackingNumber}`;
+            // 呼叫 Vercel API V2（使用新版網站格式）
+            // 本地測試：http://localhost:3000/api/query-hct-v2
+            // 部署後：https://your-project.vercel.app/api/query-hct-v2
+            const apiUrl = `/api/query-hct-v2?trackingNumber=${trackingNumber}`;
 
             console.log(`📡 API URL: ${apiUrl}`);
 
