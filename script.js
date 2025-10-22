@@ -1086,6 +1086,7 @@ class HCTTracker {
         // 清理文字
         const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
         console.log('清理後的行:', lines);
+        console.log('========== 開始姓名提取邏輯 ==========');
 
         // 提取貨號（10位數字，排除電話號碼）
         if (includeTrackingNumber) {
@@ -1118,25 +1119,55 @@ class HCTTracker {
             }
         }
 
-        // 方法1：尋找「姓名」標籤後面的文字
+        // 方法0：尋找「收」字旁邊的姓名（表格常見格式：收貨人）
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
 
-            // 尋找姓名：找到「姓名」標籤後提取後面的中文
-            if (line.includes('姓名') && !result.name) {
-                // 移除「姓名」標籤和電話號碼，提取剩餘的中文字符
-                let nameAfterLabel = line
-                    .replace(/姓名[:：\s]*/g, '')
-                    .replace(/\d{10}/g, '')  // 移除10位數字（電話）
-                    .replace(/\d{8,}/g, '')  // 移除8位以上數字
+            // 如果這行包含「收」字（收貨人）
+            if ((line.includes('收') || line.includes('貨人')) && !result.name) {
+                console.log('[方法0] 找到「收」字，該行:', line);
+
+                // 提取該行的中文字符（排除「收」「貨」「人」等標籤字）
+                const cleanLine = line
+                    .replace(/\d+/g, '')  // 移除數字
+                    .replace(/[\|\-_#@$%()（）]/g, '')  // 移除特殊符號
+                    .replace(/收|貨|人|姓|名|寄|件/g, '')  // 移除標籤字
+                    .replace(/\s+/g, '')  // 移除空格
                     .trim();
 
-                // 移除空格後檢查
-                const noSpaceName = nameAfterLabel.replace(/\s+/g, '');
-                const nameMatch = noSpaceName.match(/([一-龥]{2,5})/);
+                const nameMatch = cleanLine.match(/([一-龥]{2,4})/);
                 if (nameMatch) {
                     result.name = nameMatch[1];
-                    console.log('找到姓名（方法1）:', result.name);
+                    console.log('[方法0] ✅ 找到姓名（收貨人旁）:', result.name);
+                    break;
+                }
+            }
+        }
+
+        // 方法1：尋找「姓名」標籤後面的文字
+        if (!result.name) {
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+
+                // 尋找姓名：找到「姓名」標籤後提取後面的中文
+                if (line.includes('姓名')) {
+                    console.log('[方法1] 找到「姓名」標籤，該行:', line);
+
+                    // 移除「姓名」標籤和電話號碼，提取剩餘的中文字符
+                    let nameAfterLabel = line
+                        .replace(/姓名[:：\s]*/g, '')
+                        .replace(/\d{10}/g, '')  // 移除10位數字（電話）
+                        .replace(/\d{8,}/g, '')  // 移除8位以上數字
+                        .trim();
+
+                    // 移除空格後檢查
+                    const noSpaceName = nameAfterLabel.replace(/\s+/g, '');
+                    const nameMatch = noSpaceName.match(/([一-龥]{2,4})/);
+                    if (nameMatch) {
+                        result.name = nameMatch[1];
+                        console.log('[方法1] ✅ 找到姓名:', result.name);
+                        break;
+                    }
                 }
             }
         }
@@ -1190,30 +1221,47 @@ class HCTTracker {
         }
 
         // 方法4：針對表格格式 - 找紅框標註區域的名字（通常在地址前面）
-        if (!result.name && includeTrackingNumber) {
-            // 找到貨號後，往後找幾行看有沒有純中文的行
-            let foundTrackingLine = false;
+        if (!result.name && includeTrackingNumber && result.trackingNumber) {
+            console.log('[方法4] 表格格式 - 開始尋找姓名');
+
+            // 找到貨號所在的行索引
+            let trackingLineIndex = -1;
             for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
-
-                // 找到貨號所在行
-                if (line.includes(result.trackingNumber)) {
-                    foundTrackingLine = true;
+                if (lines[i].includes(result.trackingNumber)) {
+                    trackingLineIndex = i;
+                    console.log('[方法4] 找到貨號在第', i, '行:', lines[i]);
+                    break;
                 }
+            }
 
-                // 在貨號後面的5行內找純中文名字
-                if (foundTrackingLine && i < lines.length) {
-                    // 清理：移除數字和特殊符號，但保留空格
-                    const cleanLine = line.replace(/[\d\|\-_#@]/g, '').trim();
+            // 在貨號後面的 2-6 行內找純中文名字（跳過第一行，因為可能是貨號本身）
+            if (trackingLineIndex >= 0) {
+                for (let i = trackingLineIndex + 1; i <= Math.min(trackingLineIndex + 6, lines.length - 1); i++) {
+                    const line = lines[i];
+                    console.log(`[方法4] 檢查第 ${i} 行:`, line);
 
-                    // 移除所有空格後檢查是否為純中文（2-5字）
-                    const noSpaceLine = cleanLine.replace(/\s+/g, '');
-                    if (/^[一-龥]{2,5}$/.test(noSpaceLine)) {
-                        const excludeKeywords = ['姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註'];
-                        if (!excludeKeywords.includes(noSpaceLine)) {
-                            result.name = noSpaceLine;  // 使用去除空格後的名字
-                            console.log('找到姓名（方法4-表格）:', result.name);
+                    // 清理：移除數字和特殊符號
+                    const cleanLine = line
+                        .replace(/\d+/g, '')  // 移除所有數字
+                        .replace(/[\|\-_#@$%()（）]/g, '')  // 移除特殊符號
+                        .replace(/\s+/g, '')  // 移除空格
+                        .trim();
+
+                    console.log('[方法4] 清理後:', cleanLine);
+
+                    // 檢查是否為純中文（2-4字，名字通常不超過4字）
+                    if (/^[一-龥]{2,4}$/.test(cleanLine)) {
+                        const excludeKeywords = ['姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註', '新北市', '台北市', '高雄市', '台中市', '中和區', '員山路'];
+
+                        // 排除包含關鍵字的內容
+                        const isExcluded = excludeKeywords.some(kw => cleanLine.includes(kw));
+
+                        if (!isExcluded) {
+                            result.name = cleanLine;
+                            console.log('[方法4] ✅ 找到姓名:', result.name);
                             break;
+                        } else {
+                            console.log('[方法4] ❌ 排除（包含關鍵字）:', cleanLine);
                         }
                     }
                 }
