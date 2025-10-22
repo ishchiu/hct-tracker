@@ -1146,26 +1146,22 @@ class HCTTracker {
                 const cleanLine = line
                     .replace(/\d+/g, '')  // 移除數字
                     .replace(/[\|\-_#@$%()（）:：、]/g, '')  // 移除特殊符號和標點
-                    .replace(/收件人|收貨人|姓名|寄件人|電話|手機/g, '')  // 移除標籤詞
+                    .replace(/收件人|收貨人|寄件人|電話|手機/g, '')  // 移除標籤詞（不移除「收」「貨」「人」單字）
                     .replace(/\s+/g, '')  // 移除空格
                     .trim();
 
                 console.log('[方法0] 清理後:', cleanLine);
 
+                // 先移除單獨的「收」「貨」「人」「姓」「名」等單字
+                const finalClean = cleanLine.replace(/^[收貨人姓名]+/, '').trim();
+                console.log('[方法0] 最終清理:', finalClean);
+
                 // 匹配 2-4 個中文字（台灣姓名通常 2-4 字）
-                const nameMatch = cleanLine.match(/^([一-龥]{2,4})$/);
+                const nameMatch = finalClean.match(/([一-龥]{2,4})/);
                 if (nameMatch) {
                     result.name = nameMatch[1];
-                    console.log('[方法0] ✅ 找到姓名（收件人旁）:', result.name);
+                    console.log('[方法0] ✅ 找到姓名:', result.name);
                     break;
-                } else {
-                    // 如果整行不符合，嘗試找第一個符合的片段
-                    const partialMatch = cleanLine.match(/([一-龥]{2,4})/);
-                    if (partialMatch) {
-                        result.name = partialMatch[1];
-                        console.log('[方法0] ✅ 找到姓名（部分匹配）:', result.name);
-                        break;
-                    }
                 }
             }
         }
@@ -1296,32 +1292,35 @@ class HCTTracker {
                     const line = lines[i];
                     console.log(`[方法4] 檢查第 ${i} 行:`, line);
 
-                    // 清理：移除數字和特殊符號
+                    // 清理：移除數字和特殊符號，保留中文
                     const cleanLine = line
                         .replace(/\d+/g, '')  // 移除所有數字
-                        .replace(/[\|\-_#@$%()（）]/g, '')  // 移除特殊符號
+                        .replace(/[A-Za-z]/g, '')  // 移除英文字母
+                        .replace(/[\|\-_#@$%()（）\[\]\{\}]/g, '')  // 移除特殊符號
                         .replace(/\s+/g, '')  // 移除空格
                         .trim();
 
                     console.log('[方法4] 清理後:', cleanLine);
 
-                    // 檢查是否為純中文（2-4字，名字通常不超過4字）
-                    if (/^[一-龥]{2,4}$/.test(cleanLine)) {
+                    // 提取純中文片段（2-4字）
+                    const nameMatch = cleanLine.match(/([一-龥]{2,4})/);
+                    if (nameMatch) {
+                        const candidateName = nameMatch[1];
                         const excludeKeywords = [
                             '姓名', '貨號', '地址', '件數', '收件人', '寄件人', '電話', '手機', '備註',
                             '新北市', '台北市', '高雄市', '台中市', '中和區', '員山路', '淡水區',
-                            '公司', '有限', '股份', '企業', '商行', '工作室'  // 排除公司名稱
+                            '公司', '有限', '股份', '企業', '商行', '工作室'
                         ];
 
                         // 排除包含關鍵字的內容
-                        const isExcluded = excludeKeywords.some(kw => cleanLine.includes(kw));
+                        const isExcluded = excludeKeywords.some(kw => candidateName.includes(kw));
 
                         if (!isExcluded) {
-                            result.name = cleanLine;
+                            result.name = candidateName;
                             console.log('[方法4] ✅ 找到姓名:', result.name);
                             break;
                         } else {
-                            console.log('[方法4] ❌ 排除（包含關鍵字）:', cleanLine);
+                            console.log('[方法4] ❌ 排除（包含關鍵字）:', candidateName);
                         }
                     }
                 }
