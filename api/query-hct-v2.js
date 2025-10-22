@@ -14,6 +14,22 @@ function parseNewHCTFormat(html) {
   try {
     console.log('[解析] HTML 長度:', html.length);
 
+    // Debug: 搜尋關鍵字
+    const hasColOptime = html.includes('col_optime');
+    const hasGridItem = html.includes('grid-item');
+    const hasDate = html.match(/2025\/\d{1,2}\/\d{1,2}/);
+
+    console.log('[Debug] 包含 col_optime:', hasColOptime);
+    console.log('[Debug] 包含 grid-item:', hasGridItem);
+    console.log('[Debug] 包含日期:', hasDate ? hasDate[0] : 'No');
+
+    // 如果有日期，找出日期附近的內容
+    if (hasDate) {
+      const dateIndex = html.indexOf(hasDate[0]);
+      const context = html.substring(Math.max(0, dateIndex - 200), Math.min(html.length, dateIndex + 200));
+      console.log('[Debug] 日期附近的 HTML:', context);
+    }
+
     // 方法 1：提取 grid-item 結構（新版網站）
     // 時間格式：<div class="grid-item col_optime">2025/10/22 12:37</div>
     const timeRegex = /<div[^>]*class="[^"]*col_optime[^"]*"[^>]*>([^<]+)<\/div>/gi;
