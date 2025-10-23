@@ -6,3 +6,7 @@ https://hct-tracker-lgfa.vercel.app/
 https://github.com/ishchiu/hct-tracker
 
 
+問題：
+1.上傳標籤後，自動抓取單號,姓名,地址,件數，文字辨識不佳
+2.追蹤清單內，按放大鏡符號，可以另開新視窗看到貨態，並且手動回填
+3.追蹤清單內，按機器人符號，無法自動抓取貨態
