@@ -1,0 +1,8 @@
+
+Vercel上的網址: 
+https://hct-tracker-lgfa.vercel.app/
+
+已上傳到GitHub
+https://github.com/ishchiu/hct-tracker
+
+
